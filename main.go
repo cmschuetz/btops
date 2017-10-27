@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"log"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/cmschuetz/bspwm-desktops/ipc"
 )
 
 const (
@@ -37,56 +37,48 @@ type desktop struct {
 }
 
 func main() {
-	bspcSub := exec.Command("bspc", "subscribe")
-	bspcSubOut, err := bspcSub.StdoutPipe()
-
+	sub, err := ipc.NewSubscriber()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
+	defer sub.Close()
 
-	scanner := bufio.NewScanner(bspcSubOut)
+	for sub.Scanner.Scan() {
+		r := newReport(sub.Scanner.Text())
 
-	go func() {
-		for scanner.Scan() {
-			r := newReport(scanner.Text())
+		for _, m := range *r {
+			d := m.desktopToRemove()
 
-			for _, m := range *r {
-				d := m.desktopToRemove()
-
-				if d != "" {
-					fmt.Println("desktop to remove:", d)
-					dID, err := m.desktopID(d)
+			if d != "" {
+				fmt.Println("desktop to remove:", d)
+				dID, err := m.desktopID(d)
+				if err != nil {
+					fmt.Println(err)
+				} else {
+					fmt.Println("Attempting to remove", dID)
+					err = removeDesktop(dID)
 					if err != nil {
 						fmt.Println(err)
 					} else {
-						fmt.Println("Attempting to remove", dID)
-						err = removeDesktop(dID)
-						if err != nil {
-							fmt.Println(err)
-						} else {
-							fmt.Println("Desktop", d, "removed")
-							break
-						}
-					}
-				}
-
-				d = m.desktopToAdd()
-
-				if d != "" {
-					fmt.Println("Monitor to add to:", m.name)
-					err = addDesktop(m.name, d)
-					if err != nil {
-						fmt.Println(err)
-					} else {
+						fmt.Println("Desktop", d, "removed")
 						break
 					}
 				}
 			}
-		}
-	}()
 
-	bspcSub.Start()
-	bspcSub.Wait()
+			d = m.desktopToAdd()
+
+			if d != "" {
+				fmt.Println("Monitor to add to:", m.name)
+				err = addDesktop(m.name, d)
+				if err != nil {
+					fmt.Println(err)
+				} else {
+					break
+				}
+			}
+		}
+	}
 }
 
 func newReport(rawReport string) *report {
