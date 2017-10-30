@@ -3,6 +3,7 @@ package ipc
 import (
 	"bufio"
 	"bytes"
+	"io/ioutil"
 	"net"
 )
 
@@ -54,4 +55,19 @@ func buildPayload(cmd ...string) []byte {
 	}
 
 	return buffer.Bytes()
+}
+
+func Send(cmd ...string) (response []byte, err error) {
+	conn, err := newConn()
+	if err != nil {
+		return response, err
+	}
+	defer conn.Close()
+
+	_, err = conn.Write(buildPayload(cmd...))
+	if err != nil {
+		return response, err
+	}
+
+	return ioutil.ReadAll(conn)
 }
