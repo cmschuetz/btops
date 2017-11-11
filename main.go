@@ -5,10 +5,21 @@ import (
 	"strconv"
 
 	"github.com/cmschuetz/bspwm-desktops/ipc"
+	"github.com/cmschuetz/bspwm-desktops/rules"
+
 	"github.com/cmschuetz/bspwm-desktops/monitors"
 )
 
 func main() {
+	c, err := rules.GetConfig()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(c)
+
+	handlers := rules.NewHandlers(c)
+
 	sub, err := ipc.NewSubscriber()
 	if err != nil {
 		fmt.Println(err)
@@ -21,9 +32,7 @@ func main() {
 			fmt.Println("Unable to obtain monitors:", err)
 		}
 
-		if err = adjustDesktops(monitors); err != nil {
-			fmt.Println(err)
-		}
+		handlers.Handle(monitors)
 	}
 }
 
