@@ -93,7 +93,7 @@ func (d *Desktop) Rename(name string) error {
 }
 
 func (m *Monitor) AppendDesktop(name string) error {
-	if _, err := ipc.Send("monitor", "-a", name); err != nil {
+	if _, err := ipc.Send("monitor", m.Name, "-a", name); err != nil {
 		return err
 	}
 

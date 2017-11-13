@@ -124,8 +124,15 @@ func (a AppendHandler) ShouldHandle() bool {
 
 func (a AppendHandler) Handle(m *monitors.Monitors) bool {
 	for _, monitor := range *m {
-		if !monitor.Desktops[len(monitor.Desktops)-1].IsEmpty() {
-			err := monitor.AppendDesktop(strconv.Itoa(len(monitor.Desktops) + 1))
+		dCount := len(monitor.Desktops)
+
+		if a.config.Max != nil && *a.config.Max <= dCount {
+			continue
+		}
+
+		if a.config.Min != nil && *a.config.Min > dCount ||
+			!monitor.Desktops[dCount-1].IsEmpty() {
+			err := monitor.AppendDesktop(strconv.Itoa(dCount + 1))
 			if err != nil {
 				fmt.Println("Unable to append desktop to monitor: ", monitor.Name, err)
 				continue
@@ -146,6 +153,10 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 	for _, monitor := range *m {
 		for _, desktop := range monitor.EmptyDesktops() {
 			if *desktop == monitor.Desktops[len(monitor.Desktops)-1] {
+				continue
+			}
+
+			if r.config.Min != nil && *r.config.Min >= len(monitor.Desktops) {
 				continue
 			}
 
