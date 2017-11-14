@@ -26,6 +26,9 @@ type Config struct {
 	RemoveEmpty         bool   `mapstructure:"remove-empty"`
 	AppendWhenOccupied  bool   `mapstructure:"append-when-occupied"`
 	DefaultNamingScheme string `mapstructure:"default-naming-scheme"`
+	Renamers            []string
+	ConstantName        string   `mapstructure:"constant-name"`
+	StaticNames         []string `mapstructure:"static-names"`
 }
 
 type baseHandler struct {
@@ -39,6 +42,19 @@ type RemoveHandler struct{ baseHandler }
 type RenameHandler struct {
 	baseHandler
 	handler handlerFunc
+}
+
+type Renamer interface {
+	CanRename(*monitors.Monitors) bool
+	Rename(*monitors.Monitors) bool
+}
+
+type constantRenamer struct {
+	name string
+}
+
+type staticRenamer struct {
+	names []string
 }
 
 type Handler interface {
@@ -243,4 +259,46 @@ func (r RenameHandler) ApplicationNamesHandler(m *monitors.Monitors) bool {
 
 func (r RenameHandler) Handle(m *monitors.Monitors) bool {
 	return r.handler(m)
+}
+
+func (c constantRenamer) CanRename(m *monitors.Monitors) bool {
+	return true
+}
+
+func (c constantRenamer) Rename(m *monitors.Monitors) bool {
+	for _, monitor := range *m {
+		for _, desktop := range monitor.Desktops {
+			if desktop.Name == c.name {
+				continue
+			}
+
+			err := desktop.Rename(c.name)
+			if err != nil {
+				fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+				continue
+			}
+
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s staticRenamer) CanRename(m *monitors.Monitors) bool {
+	for _, monitor := range *m {
+		for i, desktop := range monitor.Desktops {
+			if i >= len(s.names) {
+				break
+			}
+
+			if desktop.Name == s.names[i] {
+				continue
+			}
+
+			return true
+		}
+	}
+
+	return false
 }
