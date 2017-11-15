@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/user"
 	"strconv"
@@ -21,8 +22,8 @@ const (
 )
 
 type Config struct {
-	Min                *int
-	Max                *int
+	Min                int
+	Max                int
 	RemoveEmpty        bool `mapstructure:"remove-empty"`
 	AppendWhenOccupied bool `mapstructure:"append-when-occupied"`
 	Renamers           []string
@@ -109,6 +110,8 @@ func NewHandlers(c *Config) *Handlers {
 func newDefaultConfig() *viper.Viper {
 	c := viper.New()
 
+	c.SetDefault("min", 1)
+	c.SetDefault("max", math.MaxInt64)
 	c.SetDefault("remove-empty", true)
 	c.SetDefault("append-when-occupied", true)
 	c.SetDefault("default-naming-scheme", numeric)
@@ -140,19 +143,24 @@ func (a AppendHandler) Handle(m *monitors.Monitors) bool {
 	for _, monitor := range *m {
 		dCount := len(monitor.Desktops)
 
-		if a.config.Max != nil && *a.config.Max <= dCount {
+		if a.config.Max <= dCount {
 			continue
 		}
 
-		if a.config.Min != nil && *a.config.Min > dCount ||
-			!monitor.Desktops[dCount-1].IsEmpty() {
-			err := monitor.AppendDesktop(strconv.Itoa(dCount + 1))
-			if err != nil {
-				fmt.Println("Unable to append desktop to monitor: ", monitor.Name, err)
-				continue
+		for i, desktop := range monitor.Desktops {
+			if desktop.IsEmpty() {
+				break
 			}
 
-			return true
+			if i == dCount-1 || a.config.Min > dCount {
+				err := monitor.AppendDesktop("")
+				if err != nil {
+					fmt.Println("Unable to append desktop to monitor: ", monitor.Name, err)
+					continue
+				}
+
+				return true
+			}
 		}
 	}
 
@@ -170,7 +178,7 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 				continue
 			}
 
-			if r.config.Min != nil && *r.config.Min >= len(monitor.Desktops) {
+			if r.config.Min >= len(monitor.Desktops) {
 				continue
 			}
 
