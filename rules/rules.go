@@ -21,14 +21,14 @@ const (
 )
 
 type Config struct {
-	Min                 *int
-	Max                 *int
-	RemoveEmpty         bool   `mapstructure:"remove-empty"`
-	AppendWhenOccupied  bool   `mapstructure:"append-when-occupied"`
-	DefaultNamingScheme string `mapstructure:"default-naming-scheme"`
-	Renamers            []string
-	ConstantName        string   `mapstructure:"constant-name"`
-	StaticNames         []string `mapstructure:"static-names"`
+	Min                *int
+	Max                *int
+	RemoveEmpty        bool `mapstructure:"remove-empty"`
+	AppendWhenOccupied bool `mapstructure:"append-when-occupied"`
+	Renamers           []string
+	ConstantName       string                `mapstructure:"constant-name"`
+	StaticNames        []string              `mapstructure:"static-names"`
+	ClassifiedNames    []map[string][]string `mapstructure:"classified-names"`
 }
 
 type baseHandler struct {
@@ -41,21 +41,19 @@ type AppendHandler struct{ baseHandler }
 type RemoveHandler struct{ baseHandler }
 type RenameHandler struct {
 	baseHandler
-	handler handlerFunc
+	renamers []Renamer
 }
 
 type Renamer interface {
-	CanRename(*monitors.Monitors) bool
-	Rename(*monitors.Monitors) bool
+	Initialize(*Config)
+	CanRename(*monitors.Desktop, int) bool
+	Rename(*monitors.Desktop, int) bool
 }
 
-type constantRenamer struct {
-	name string
-}
-
-type staticRenamer struct {
-	names []string
-}
+type constantRenamer struct{ name string }
+type staticRenamer struct{ names []string }
+type clientRenamer struct{}
+type numericRenamer struct{}
 
 type Handler interface {
 	Initialize(*Config)
@@ -191,114 +189,142 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 
 func (r *RenameHandler) Initialize(c *Config) {
 	r.baseHandler.Initialize(c)
-	r.handler = r.GetHandler()
+	r.renamers = *NewRenamers(c)
 }
 
-func (r RenameHandler) GetHandler() func(*monitors.Monitors) bool {
-	switch r.config.DefaultNamingScheme {
-	case numeric:
-		return r.NumericHandler
-	case applicationNames:
-		return r.ApplicationNamesHandler
+func NewRenamers(c *Config) *[]Renamer {
+	var renamers []Renamer
+	var renamer Renamer
+
+	for _, r := range c.Renamers {
+		switch r {
+		case "constant":
+			renamer = &constantRenamer{}
+		case "static":
+			renamer = &staticRenamer{}
+		case "client":
+			renamer = &clientRenamer{}
+		case "numeric":
+			renamer = &numericRenamer{}
+		default:
+			continue
+		}
+
+		renamer.Initialize(c)
+		renamers = append(renamers, renamer)
 	}
 
-	return nil
+	return &renamers
 }
 
 func (r RenameHandler) ShouldHandle() bool {
-	return r.handler != nil
-}
-
-func (r RenameHandler) NumericHandler(m *monitors.Monitors) bool {
-	for _, monitor := range *m {
-		for i, desktop := range monitor.Desktops {
-			name := strconv.Itoa(i + 1)
-			if desktop.Name == name {
-				continue
-			}
-
-			err := desktop.Rename(name)
-			if err != nil {
-				fmt.Println("Unable to rename desktop: ", desktop.Name, err)
-				continue
-			}
-
-			return true
-		}
-	}
-
-	return false
-}
-
-func (r RenameHandler) ApplicationNamesHandler(m *monitors.Monitors) bool {
-	for _, monitor := range *m {
-		for _, desktop := range monitor.Desktops {
-			clients := desktop.Clients()
-			var names []string
-			for _, client := range clients {
-				names = append(names, client.ClassName)
-			}
-			desktopName := strings.Join(names, " ")
-			fmt.Println(desktopName)
-			if desktop.Name == desktopName {
-				continue
-			}
-
-			err := desktop.Rename(desktopName)
-			if err != nil {
-				fmt.Println("Unable to rename desktop: ", desktop.Name, err)
-				continue
-			}
-
-			return true
-		}
-	}
-
-	return false
+	return len(r.renamers) > 0
 }
 
 func (r RenameHandler) Handle(m *monitors.Monitors) bool {
-	return r.handler(m)
+	for _, monitor := range *m {
+		for i, desktop := range monitor.Desktops {
+			for _, renamer := range r.renamers {
+				if !renamer.CanRename(&desktop, i) {
+					continue
+				}
+
+				if !renamer.Rename(&desktop, i) {
+					break
+				}
+
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
-func (c constantRenamer) CanRename(m *monitors.Monitors) bool {
+func (c *constantRenamer) Initialize(conf *Config) {
+	c.name = conf.ConstantName
+}
+
+func (c constantRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
 	return true
 }
 
-func (c constantRenamer) Rename(m *monitors.Monitors) bool {
-	for _, monitor := range *m {
-		for _, desktop := range monitor.Desktops {
-			if desktop.Name == c.name {
-				continue
-			}
-
-			err := desktop.Rename(c.name)
-			if err != nil {
-				fmt.Println("Unable to rename desktop: ", desktop.Name, err)
-				continue
-			}
-
-			return true
-		}
+func (c constantRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
+	if desktop.Name == c.name {
+		return false
 	}
 
-	return false
+	err := desktop.Rename(c.name)
+	if err != nil {
+		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		return false
+	}
+
+	return true
 }
 
-func (s staticRenamer) CanRename(m *monitors.Monitors) bool {
-	for _, monitor := range *m {
-		for i, desktop := range monitor.Desktops {
-			if i >= len(s.names) {
-				break
-			}
+func (s *staticRenamer) Initialize(conf *Config) {
+	s.names = conf.StaticNames
+}
 
-			if desktop.Name == s.names[i] {
-				continue
-			}
-
-			return true
-		}
+func (s staticRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
+	if desktopIdx >= len(s.names) {
+		return false
 	}
 
-	return false
+	return true
+}
+
+func (s staticRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
+	if desktop.Name == s.names[desktopIdx] {
+		return false
+	}
+
+	err := desktop.Rename(s.names[desktopIdx])
+	if err != nil {
+		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		return false
+	}
+
+	return true
+}
+
+func (c *clientRenamer) Initialize(conf *Config) {}
+func (c clientRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
+	return len(desktop.Clients().Names()) > 0
+}
+func (c clientRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
+	name := strings.Join(desktop.Clients().Names(), " ")
+
+	if desktop.Name == name {
+		return false
+	}
+
+	err := desktop.Rename(name)
+	if err != nil {
+		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		return false
+	}
+
+	return true
+}
+
+func (n *numericRenamer) Initialize(conf *Config) {}
+func (n numericRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
+	return true
+}
+func (n numericRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
+	numericName := strconv.Itoa(desktopIdx + 1)
+
+	if desktop.Name == numericName {
+		return false
+	}
+
+	err := desktop.Rename(numericName)
+	if err != nil {
+		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		return false
+	}
+
+	return true
 }

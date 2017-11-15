@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"encoding/json"
+	"sort"
 	"strconv"
 
 	"github.com/cmschuetz/bspwm-desktops/ipc"
@@ -36,6 +37,35 @@ type Client struct {
 	ClassName string
 }
 
+type Clients struct {
+	clients map[string]int
+}
+
+func newClients(nodes []*Node) (clients Clients) {
+	clients.clients = make(map[string]int, len(nodes))
+
+	for _, node := range nodes {
+		if node.Client == nil {
+			continue
+		}
+
+		clients.clients[node.Client.ClassName]++
+	}
+
+	return clients
+}
+
+func (c Clients) Names() (names []string) {
+	names = make([]string, 0, len(c.clients))
+
+	for key := range c.clients {
+		names = append(names, key)
+	}
+
+	sort.Strings(names)
+	return names
+}
+
 func GetMonitors() (*Monitors, error) {
 	jsonState, err := ipc.Send("wm", "-d")
 	if err != nil {
@@ -54,18 +84,8 @@ func (d Desktop) IsEmpty() bool {
 	return d.Root == nil
 }
 
-func (d Desktop) Clients() (clients []Client) {
-	nodes := d.Nodes()
-
-	for _, node := range nodes {
-		if node.Client == nil {
-			continue
-		}
-
-		clients = append(clients, *node.Client)
-	}
-
-	return clients
+func (d Desktop) Clients() (clients Clients) {
+	return newClients(d.Nodes())
 }
 
 func (d Desktop) Nodes() (nodes []*Node) {
