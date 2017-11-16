@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cmschuetz/bspwm-desktops/monitors"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
@@ -30,6 +31,8 @@ type Config struct {
 	ConstantName       string                `mapstructure:"constant-name"`
 	StaticNames        []string              `mapstructure:"static-names"`
 	ClassifiedNames    []map[string][]string `mapstructure:"classified-names"`
+	WatchConfig        bool                  `mapstructure:"watch-config"`
+	configChangeC      chan bool
 }
 
 type baseHandler struct {
@@ -66,6 +69,7 @@ type Handlers []Handler
 
 func GetConfig() (*Config, error) {
 	var c Config
+	c.configChangeC = make(chan bool)
 
 	currentUser, err := user.Current()
 	if err != nil {
@@ -90,7 +94,23 @@ func GetConfig() (*Config, error) {
 		return nil, err
 	}
 
+	if c.WatchConfig {
+		viperConf.WatchConfig()
+		viperConf.OnConfigChange(func(e fsnotify.Event) {
+			c.configChangeC <- true
+		})
+	}
+
 	return &c, nil
+}
+
+func (c Config) ConfigChanged() bool {
+	select {
+	case changed := <-c.configChangeC:
+		return changed
+	default:
+		return false
+	}
 }
 
 func NewHandlers(c *Config) *Handlers {
@@ -115,6 +135,7 @@ func newDefaultConfig() *viper.Viper {
 	c.SetDefault("remove-empty", true)
 	c.SetDefault("append-when-occupied", true)
 	c.SetDefault("default-naming-scheme", numeric)
+	c.SetDefault("watch-config", true)
 
 	return c
 }
@@ -147,21 +168,33 @@ func (a AppendHandler) Handle(m *monitors.Monitors) bool {
 			continue
 		}
 
+		appendDesktop := false
 		for i, desktop := range monitor.Desktops {
+			if dCount < a.config.Min {
+				appendDesktop = true
+				break
+			}
+
 			if desktop.IsEmpty() {
 				break
 			}
 
-			if i == dCount-1 || a.config.Min > dCount {
-				err := monitor.AppendDesktop("")
-				if err != nil {
-					fmt.Println("Unable to append desktop to monitor: ", monitor.Name, err)
-					continue
-				}
-
-				return true
+			if i == dCount-1 {
+				appendDesktop = true
 			}
 		}
+
+		if !appendDesktop {
+			continue
+		}
+
+		err := monitor.AppendDesktop("")
+		if err != nil {
+			fmt.Println("Unable to append desktop to monitor: ", monitor.Name, err)
+			continue
+		}
+
+		return true
 	}
 
 	return false
