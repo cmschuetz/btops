@@ -58,6 +58,14 @@ type constantRenamer struct{ name string }
 type staticRenamer struct{ names []string }
 type clientRenamer struct{}
 type numericRenamer struct{}
+type classifiedRenamer struct {
+	priorityMap map[string]classification
+}
+
+type classification struct {
+	name     string
+	priority int
+}
 
 type Handler interface {
 	Initialize(*Config)
@@ -247,6 +255,8 @@ func NewRenamers(c *Config) *[]Renamer {
 			renamer = &clientRenamer{}
 		case "numeric":
 			renamer = &numericRenamer{}
+		case "classified":
+			renamer = &classifiedRenamer{}
 		default:
 			continue
 		}
@@ -362,6 +372,59 @@ func (n numericRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 	}
 
 	err := desktop.Rename(numericName)
+	if err != nil {
+		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		return false
+	}
+
+	return true
+}
+
+func (c *classifiedRenamer) Initialize(conf *Config) {
+	c.priorityMap = make(map[string]classification)
+	priority := 0
+
+	for _, classMap := range conf.ClassifiedNames {
+		for name, clients := range classMap {
+			for _, client := range clients {
+				classification := classification{name: name, priority: priority}
+				c.priorityMap[client] = classification
+			}
+
+			priority++
+		}
+	}
+}
+
+func (c classifiedRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
+	for _, name := range desktop.Clients().Names() {
+		if _, ok := c.priorityMap[name]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c classifiedRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
+	toRename := classification{priority: math.MaxInt64}
+
+	for _, name := range desktop.Clients().Names() {
+		class, ok := c.priorityMap[name]
+		if !ok {
+			continue
+		}
+
+		if class.priority < toRename.priority {
+			toRename = class
+		}
+	}
+
+	if desktop.Name == toRename.name {
+		return false
+	}
+
+	err := desktop.Rename(toRename.name)
 	if err != nil {
 		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
 		return false
