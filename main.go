@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/cmschuetz/bspwm-desktops/config"
-	"github.com/cmschuetz/bspwm-desktops/handlers"
-	"github.com/cmschuetz/bspwm-desktops/ipc"
-	"github.com/cmschuetz/bspwm-desktops/monitors"
+	"github.com/cmschuetz/btops/config"
+	"github.com/cmschuetz/btops/handlers"
+	"github.com/cmschuetz/btops/ipc"
+	"github.com/cmschuetz/btops/monitors"
 )
 
 func main() {

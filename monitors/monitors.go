@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/cmschuetz/bspwm-desktops/ipc"
+	"github.com/cmschuetz/btops/ipc"
 )
 
 type bspwmState struct {
