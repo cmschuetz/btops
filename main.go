@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/cmschuetz/bspwm-desktops/config"
+	"github.com/cmschuetz/bspwm-desktops/handlers"
 	"github.com/cmschuetz/bspwm-desktops/ipc"
 	"github.com/cmschuetz/bspwm-desktops/monitors"
-	"github.com/cmschuetz/bspwm-desktops/rules"
 )
 
 func main() {
@@ -16,14 +17,14 @@ func main() {
 }
 
 func listen() {
-	c, err := rules.GetConfig()
+	c, err := config.GetConfig()
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println(c)
 
-	handlers := rules.NewHandlers(c)
+	handlers := handlers.NewHandlers(c)
 
 	sub, err := ipc.NewSubscriber()
 	if err != nil {

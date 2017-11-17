@@ -1,42 +1,17 @@
-package rules
+package handlers
 
 import (
 	"fmt"
 	"math"
-	"os"
-	"os/user"
 	"strconv"
 	"strings"
 
+	"github.com/cmschuetz/bspwm-desktops/config"
 	"github.com/cmschuetz/bspwm-desktops/monitors"
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
 )
-
-const (
-	configFileName    = "config"
-	defaultConfigPath = "/btops"
-	defaultHomeConfig = "/.config"
-	xdgConfigHome     = "XDG_CONFIG_HOME"
-	numeric           = "numeric"
-	applicationNames  = "application-names"
-)
-
-type Config struct {
-	Min                int
-	Max                int
-	RemoveEmpty        bool `mapstructure:"remove-empty"`
-	AppendWhenOccupied bool `mapstructure:"append-when-occupied"`
-	Renamers           []string
-	ConstantName       string                `mapstructure:"constant-name"`
-	StaticNames        []string              `mapstructure:"static-names"`
-	ClassifiedNames    []map[string][]string `mapstructure:"classified-names"`
-	WatchConfig        bool                  `mapstructure:"watch-config"`
-	configChangeC      chan bool
-}
 
 type baseHandler struct {
-	config *Config
+	config *config.Config
 }
 
 type handlerFunc func(*monitors.Monitors) bool
@@ -49,7 +24,7 @@ type RenameHandler struct {
 }
 
 type Renamer interface {
-	Initialize(*Config)
+	Initialize(*config.Config)
 	CanRename(*monitors.Desktop, int) bool
 	Rename(*monitors.Desktop, int) bool
 }
@@ -68,60 +43,14 @@ type classification struct {
 }
 
 type Handler interface {
-	Initialize(*Config)
+	Initialize(*config.Config)
 	ShouldHandle() bool
 	Handle(*monitors.Monitors) bool
 }
 
 type Handlers []Handler
 
-func GetConfig() (*Config, error) {
-	var c Config
-	c.configChangeC = make(chan bool)
-
-	currentUser, err := user.Current()
-	if err != nil {
-		fmt.Println("Unable to obtain current user")
-	}
-
-	viperConf := newDefaultConfig()
-	viperConf.SetConfigName(configFileName)
-	viperConf.AddConfigPath(fmt.Sprint(os.Getenv(xdgConfigHome), defaultConfigPath))
-	viperConf.AddConfigPath(fmt.Sprint(currentUser.HomeDir, defaultHomeConfig, defaultConfigPath))
-
-	if err := viperConf.ReadInConfig(); err != nil {
-		switch err.(type) {
-		case viper.ConfigFileNotFoundError:
-			fmt.Println(err)
-		default:
-			return nil, err
-		}
-	}
-
-	if err := viperConf.Unmarshal(&c); err != nil {
-		return nil, err
-	}
-
-	if c.WatchConfig {
-		viperConf.WatchConfig()
-		viperConf.OnConfigChange(func(e fsnotify.Event) {
-			c.configChangeC <- true
-		})
-	}
-
-	return &c, nil
-}
-
-func (c Config) ConfigChanged() bool {
-	select {
-	case changed := <-c.configChangeC:
-		return changed
-	default:
-		return false
-	}
-}
-
-func NewHandlers(c *Config) *Handlers {
+func NewHandlers(c *config.Config) *Handlers {
 	h := Handlers{
 		&AppendHandler{},
 		&RemoveHandler{},
@@ -133,19 +62,6 @@ func NewHandlers(c *Config) *Handlers {
 	}
 
 	return &h
-}
-
-func newDefaultConfig() *viper.Viper {
-	c := viper.New()
-
-	c.SetDefault("min", 1)
-	c.SetDefault("max", math.MaxInt64)
-	c.SetDefault("remove-empty", true)
-	c.SetDefault("append-when-occupied", true)
-	c.SetDefault("default-naming-scheme", numeric)
-	c.SetDefault("watch-config", true)
-
-	return c
 }
 
 func (h Handlers) Handle(m *monitors.Monitors) {
@@ -160,7 +76,7 @@ func (h Handlers) Handle(m *monitors.Monitors) {
 	}
 }
 
-func (b *baseHandler) Initialize(c *Config) {
+func (b *baseHandler) Initialize(c *config.Config) {
 	b.config = c
 }
 
@@ -236,12 +152,12 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 	return false
 }
 
-func (r *RenameHandler) Initialize(c *Config) {
+func (r *RenameHandler) Initialize(c *config.Config) {
 	r.baseHandler.Initialize(c)
 	r.renamers = *NewRenamers(c)
 }
 
-func NewRenamers(c *Config) *[]Renamer {
+func NewRenamers(c *config.Config) *[]Renamer {
 	var renamers []Renamer
 	var renamer Renamer
 
@@ -292,7 +208,7 @@ func (r RenameHandler) Handle(m *monitors.Monitors) bool {
 	return false
 }
 
-func (c *constantRenamer) Initialize(conf *Config) {
+func (c *constantRenamer) Initialize(conf *config.Config) {
 	c.name = conf.ConstantName
 }
 
@@ -314,7 +230,7 @@ func (c constantRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool 
 	return true
 }
 
-func (s *staticRenamer) Initialize(conf *Config) {
+func (s *staticRenamer) Initialize(conf *config.Config) {
 	s.names = conf.StaticNames
 }
 
@@ -340,7 +256,7 @@ func (s staticRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 	return true
 }
 
-func (c *clientRenamer) Initialize(conf *Config) {}
+func (c *clientRenamer) Initialize(conf *config.Config) {}
 func (c clientRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
 	return len(desktop.Clients().Names()) > 0
 }
@@ -360,7 +276,7 @@ func (c clientRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 	return true
 }
 
-func (n *numericRenamer) Initialize(conf *Config) {}
+func (n *numericRenamer) Initialize(conf *config.Config) {}
 func (n numericRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
 	return true
 }
@@ -380,7 +296,7 @@ func (n numericRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 	return true
 }
 
-func (c *classifiedRenamer) Initialize(conf *Config) {
+func (c *classifiedRenamer) Initialize(conf *config.Config) {
 	c.priorityMap = make(map[string]classification)
 	priority := 0
 
