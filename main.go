@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/cmschuetz/btops/config"
@@ -19,10 +18,10 @@ func main() {
 func listen() {
 	c, err := config.GetConfig()
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal("Unable to get config", err)
 	}
 
-	fmt.Println(c)
+	log.Println("Config: ", c)
 
 	handlers := handlers.NewHandlers(c)
 
@@ -35,7 +34,7 @@ func listen() {
 	for !c.ConfigChanged() && sub.Scanner.Scan() {
 		monitors, err := monitors.GetMonitors()
 		if err != nil {
-			fmt.Println("Unable to obtain monitors:", err)
+			log.Println("Unable to obtain monitors:", err)
 		}
 
 		handlers.Handle(monitors)

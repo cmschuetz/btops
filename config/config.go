@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"os/user"
@@ -24,12 +25,16 @@ type Config struct {
 	Max                int
 	RemoveEmpty        bool `mapstructure:"remove-empty"`
 	AppendWhenOccupied bool `mapstructure:"append-when-occupied"`
-	Renamers           []string
-	ConstantName       string                `mapstructure:"constant-name"`
-	StaticNames        []string              `mapstructure:"static-names"`
-	ClassifiedNames    []map[string][]string `mapstructure:"classified-names"`
-	WatchConfig        bool                  `mapstructure:"watch-config"`
+	WatchConfig        bool `mapstructure:"watch-config"`
 	configChangeC      chan bool
+	Renamers           []string
+	Names              names
+}
+
+type names struct {
+	Constant   string
+	Static     []string
+	Classified []map[string][]string
 }
 
 func GetConfig() (*Config, error) {
@@ -38,7 +43,7 @@ func GetConfig() (*Config, error) {
 
 	currentUser, err := user.Current()
 	if err != nil {
-		fmt.Println("Unable to obtain current user")
+		log.Println("Unable to obtain current user")
 	}
 
 	viperConf := newDefaultConfig()
@@ -49,7 +54,7 @@ func GetConfig() (*Config, error) {
 	if err := viperConf.ReadInConfig(); err != nil {
 		switch err.(type) {
 		case viper.ConfigFileNotFoundError:
-			fmt.Println(err)
+			log.Println(err)
 		default:
 			return nil, err
 		}
@@ -85,7 +90,7 @@ func newDefaultConfig() *viper.Viper {
 	c.SetDefault("max", math.MaxInt64)
 	c.SetDefault("remove-empty", true)
 	c.SetDefault("append-when-occupied", true)
-	c.SetDefault("default-naming-scheme", numeric)
+	c.SetDefault("renamers", []string{numeric})
 	c.SetDefault("watch-config", true)
 
 	return c

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -114,7 +114,7 @@ func (a AppendHandler) Handle(m *monitors.Monitors) bool {
 
 		err := monitor.AppendDesktop("")
 		if err != nil {
-			fmt.Println("Unable to append desktop to monitor: ", monitor.Name, err)
+			log.Println("Unable to append desktop to monitor: ", monitor.Name, err)
 			continue
 		}
 
@@ -141,7 +141,7 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 
 			err := monitor.RemoveDesktop(desktop.Id)
 			if err != nil {
-				fmt.Println("Unable to remove desktop: ", desktop.Name, err)
+				log.Println("Unable to remove desktop: ", desktop.Name, err)
 				continue
 			}
 
@@ -209,7 +209,7 @@ func (r RenameHandler) Handle(m *monitors.Monitors) bool {
 }
 
 func (c *constantRenamer) Initialize(conf *config.Config) {
-	c.name = conf.ConstantName
+	c.name = conf.Names.Constant
 }
 
 func (c constantRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
@@ -223,7 +223,7 @@ func (c constantRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool 
 
 	err := desktop.Rename(c.name)
 	if err != nil {
-		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		log.Println("Unable to rename desktop: ", desktop.Name, err)
 		return false
 	}
 
@@ -231,7 +231,7 @@ func (c constantRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool 
 }
 
 func (s *staticRenamer) Initialize(conf *config.Config) {
-	s.names = conf.StaticNames
+	s.names = conf.Names.Static
 }
 
 func (s staticRenamer) CanRename(desktop *monitors.Desktop, desktopIdx int) bool {
@@ -249,7 +249,7 @@ func (s staticRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 
 	err := desktop.Rename(s.names[desktopIdx])
 	if err != nil {
-		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		log.Println("Unable to rename desktop: ", desktop.Name, err)
 		return false
 	}
 
@@ -269,7 +269,7 @@ func (c clientRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 
 	err := desktop.Rename(name)
 	if err != nil {
-		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		log.Println("Unable to rename desktop: ", desktop.Name, err)
 		return false
 	}
 
@@ -289,7 +289,7 @@ func (n numericRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) bool {
 
 	err := desktop.Rename(numericName)
 	if err != nil {
-		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		log.Println("Unable to rename desktop: ", desktop.Name, err)
 		return false
 	}
 
@@ -300,7 +300,7 @@ func (c *classifiedRenamer) Initialize(conf *config.Config) {
 	c.priorityMap = make(map[string]classification)
 	priority := 0
 
-	for _, classMap := range conf.ClassifiedNames {
+	for _, classMap := range conf.Names.Classified {
 		for name, clients := range classMap {
 			for _, client := range clients {
 				classification := classification{name: name, priority: priority}
@@ -342,7 +342,7 @@ func (c classifiedRenamer) Rename(desktop *monitors.Desktop, desktopIdx int) boo
 
 	err := desktop.Rename(toRename.name)
 	if err != nil {
-		fmt.Println("Unable to rename desktop: ", desktop.Name, err)
+		log.Println("Unable to rename desktop: ", desktop.Name, err)
 		return false
 	}
 
