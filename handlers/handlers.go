@@ -81,7 +81,7 @@ func (b *baseHandler) Initialize(c *config.Config) {
 }
 
 func (a AppendHandler) ShouldHandle() bool {
-	return a.config.AppendWhenOccupied
+	return a.config.AppendWhenOccupied || a.config.Min > 1
 }
 
 func (a AppendHandler) Handle(m *monitors.Monitors) bool {
@@ -89,6 +89,10 @@ func (a AppendHandler) Handle(m *monitors.Monitors) bool {
 		dCount := len(monitor.Desktops)
 
 		if a.config.Max <= dCount {
+			continue
+		}
+
+		if !a.config.AppendWhenOccupied && dCount >= a.config.Min {
 			continue
 		}
 

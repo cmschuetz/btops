@@ -1,0 +1,12 @@
+# Static setup
+#
+# 5 desktops, all using the static names.
+# Nothing will be appended, removed, or renamed. 
+
+min = 5
+remove-empty = false
+append-when-occupied = false
+renamers = ["static"]
+
+[names]
+static = ["term", "web", "code", "chat", "game"]
