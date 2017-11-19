@@ -4,7 +4,16 @@ bspwm desktop management that supports dymanic appending, removing, and renaming
 
 ## Introduction
 
-Often times a workflow for a given day can't be defined by a set number of desktops with constant names.  Btops enables you to define your workspaces based on what you're working on so you don't have worry about things like putting your applications in their respective desktops, running out of desktops, or leaving desktops unused and empty.
+Often times a workflow for a given day can't be defined by a set number of desktops with constant names.  Btops enables you to define your workspaces based on what you're doing so you don't have worry about things like putting your applications in their respective desktops, running out of desktops, or leaving desktops unused and empty.
+
+## Examples
+
+#### Dynamic with classified renamers
+[![btops dynamic](https://thumbs.gfycat.com/CourteousHeavyGibbon-size_restricted.gif)](https://gfycat.com/gifs/detail/CourteousHeavyGibbon)
+
+#### [Minmax](https://github.com/cmschuetz/btops/blob/master/examples/minmax.toml)
+[![btops minmax](https://thumbs.gfycat.com/HairyRewardingIncatern-size_restricted.gif)](https://gfycat.com/gifs/detail/HairyRewardingIncatern)
+
 
 ## Configuration
 
@@ -53,4 +62,7 @@ names configuration object
 - Ensure [go](https://golang.org/) is installed and your [$GOPATH](https://github.com/golang/go/wiki/GOPATH) is set
 - `go get github.com/cmschuetz/btops`
 - run `$GOPATH/bin/btops`
+
+### Arch Linux
+[btops-git](https://aur.archlinux.org/packages/btops-git/) is available in the aur
 
