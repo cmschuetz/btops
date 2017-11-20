@@ -9,10 +9,10 @@ Often times a workflow for a given day can't be defined by a set number of deskt
 ## Examples
 
 #### Dynamic with classified renamers
-[![btops dynamic](https://thumbs.gfycat.com/CourteousHeavyGibbon-size_restricted.gif)](https://gfycat.com/gifs/detail/CourteousHeavyGibbon)
+[![btops dynamic](https://thumbs.gfycat.com/CourteousHeavyGibbon-size_restricted.gif)](https://gfycat.com/CourteousHeavyGibbon)
 
 #### [Minmax](https://github.com/cmschuetz/btops/blob/master/examples/minmax.toml)
-[![btops minmax](https://thumbs.gfycat.com/HairyRewardingIncatern-size_restricted.gif)](https://gfycat.com/gifs/detail/HairyRewardingIncatern)
+[![btops minmax](https://thumbs.gfycat.com/HairyRewardingIncatern-size_restricted.gif)](https://gfycat.com/HairyRewardingIncatern)
 
 
 ## Configuration
@@ -55,7 +55,7 @@ names configuration object
 | ------ | ---- | ----------- |
 | constant | String | A single string that the constant renamer uses to rename desktops |
 | static | []String | A list of desktop names that the static renamer uses to rename desktops |
-| classified | []{ classification: []String (matched clients) } | An array of objects that match client names with a given classification.  If multiple classifications are matched, the first will be used as the desktop name
+| classified | []{ classification: []String (clients) } | An array of objects that match client names with a given classification.  If multiple classifications are matched, the first will be used as the desktop name
 
 ## Installation
 
