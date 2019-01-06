@@ -3,6 +3,7 @@
 *.dll
 *.so
 *.dylib
+btops
 
 # Test binary, build with `go test -c`
 *.test
@@ -12,3 +13,6 @@
 
 # Vendor
 vendor/
+
+# Editor Files
+.vscode
