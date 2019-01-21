@@ -143,6 +143,11 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 				continue
 			}
 
+			// TODO: Should we handle desktop destruction if the monitor focus is switched?
+			if !r.config.RemoveFocused && monitor.FocusedDesktopId == desktop.Id {
+				continue
+			}
+
 			err := monitor.RemoveDesktop(desktop.Id)
 			if err != nil {
 				log.Println("Unable to remove desktop: ", desktop.Name, err)
