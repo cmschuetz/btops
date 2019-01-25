@@ -134,11 +134,10 @@ func (r RemoveHandler) ShouldHandle() bool {
 
 func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 	for _, monitor := range *m {
+        if len(monitor.EmptyDesktops()) == 1 {
+            return true
+        }
 		for _, desktop := range monitor.EmptyDesktops() {
-			if *desktop == monitor.Desktops[len(monitor.Desktops)-1] {
-				continue
-			}
-
 			if r.config.Min >= len(monitor.Desktops) {
 				continue
 			}
