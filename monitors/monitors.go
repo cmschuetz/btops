@@ -15,6 +15,7 @@ type bspwmState struct {
 type Monitor struct {
 	Name     string
 	Id       int
+	FocusedDesktopId int
 	Desktops []Desktop
 }
 

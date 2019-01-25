@@ -24,6 +24,7 @@ type Config struct {
 	Min                int
 	Max                int
 	RemoveEmpty        bool `mapstructure:"remove-empty"`
+	RemoveFocused      bool `mapstructure:"remove-focused"`
 	AppendWhenOccupied bool `mapstructure:"append-when-occupied"`
 	WatchConfig        bool `mapstructure:"watch-config"`
 	configChangeC      chan bool
@@ -89,6 +90,7 @@ func newDefaultConfig() *viper.Viper {
 	c.SetDefault("min", 1)
 	c.SetDefault("max", math.MaxInt64)
 	c.SetDefault("remove-empty", true)
+	c.SetDefault("remove-focused", true)
 	c.SetDefault("append-when-occupied", true)
 	c.SetDefault("renamers", []string{numeric})
 	c.SetDefault("watch-config", true)
