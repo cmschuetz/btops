@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net"
+	"os"
 )
 
 const (
+	bspwmSocket = "BSPWM_SOCKET"
 	defaultBspwmSocket = "/tmp/bspwm_0_0-socket"
 )
 
@@ -39,7 +41,11 @@ func NewSubscriber() (*Subscriber, error) {
 }
 
 func newConn() (*net.UnixConn, error) {
-	raddr, err := net.ResolveUnixAddr("unix", defaultBspwmSocket)
+	socketPath := os.Getenv(bspwmSocket)
+	if len(socketPath) == 0 {
+		socketPath = defaultBspwmSocket
+	}
+	raddr, err := net.ResolveUnixAddr("unix", socketPath)
 	if err != nil {
 		return nil, err
 	}
