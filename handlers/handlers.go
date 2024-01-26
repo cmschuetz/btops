@@ -134,12 +134,20 @@ func (r RemoveHandler) ShouldHandle() bool {
 
 func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 	for _, monitor := range *m {
+		if len(monitor.EmptyDesktops()) == 1 {
+			continue
+		}
+
 		for _, desktop := range monitor.EmptyDesktops() {
-			if *desktop == monitor.Desktops[len(monitor.Desktops)-1] {
+			if r.config.Min >= len(monitor.Desktops) {
 				continue
 			}
 
-			if r.config.Min >= len(monitor.Desktops) {
+			if !r.config.RemoveFocused && monitor.FocusedDesktopId == desktop.Id {
+				continue
+			}
+
+			if *desktop == monitor.Desktops[len(monitor.Desktops)-1] && !(monitor.Desktops[len(monitor.Desktops)-2].IsEmpty()) {
 				continue
 			}
 
