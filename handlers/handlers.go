@@ -143,8 +143,11 @@ func (r RemoveHandler) Handle(m *monitors.Monitors) bool {
 				continue
 			}
 
-			// TODO: Should we handle desktop destruction if the monitor focus is switched?
 			if !r.config.RemoveFocused && monitor.FocusedDesktopId == desktop.Id {
+				continue
+			}
+
+			if *desktop == monitor.Desktops[len(monitor.Desktops)-1] && !(monitor.Desktops[len(monitor.Desktops)-2].IsEmpty()) {
 				continue
 			}
 
